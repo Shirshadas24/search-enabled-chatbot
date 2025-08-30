@@ -143,6 +143,7 @@
 
 // export default MessageArea;
 import React from 'react';
+import { SearchInfo, Message } from '@/types/types';
 
 // Define the types for your data structures
 interface SearchInfo {

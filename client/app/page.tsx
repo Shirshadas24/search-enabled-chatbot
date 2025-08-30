@@ -347,7 +347,7 @@
 
 // export default Home;
 "use client";
-
+import { SearchInfo, Message } from '@/types/types';
 import Header from '@/components/Header';
 import InputBar from '@/components/InputBar';
 import MessageArea from '@/components/MessageArea';
