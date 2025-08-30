@@ -353,10 +353,11 @@ import InputBar from '@/components/InputBar';
 import MessageArea from '@/components/MessageArea';
 import React, { useState } from 'react';
 
+// Corrected: 'urls' can now be a string or an array of strings
 interface SearchInfo {
   stages: string[];
   query: string;
-  urls: string[];
+  urls: string | string[];
   error?: string; // optional for error cases
 }
 
@@ -508,6 +509,7 @@ const Home: React.FC = () => {
             );
           } else if (data.type === "search_results") {
             try {
+              // The `data.urls` can be a string or an array of strings
               const urls =
                 typeof data.urls === "string" ? JSON.parse(data.urls) : data.urls;
 
