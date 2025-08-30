@@ -76,16 +76,58 @@ const Home = () => {
           url += `?checkpoint_id=${encodeURIComponent(checkpointId)}`;
         }
 
+        console.log("Connecting to SSE endpoint:", url);
+
+        // Validate environment variable
+        if (!process.env.NEXT_PUBLIC_API_URL) {
+          console.error("NEXT_PUBLIC_API_URL environment variable is not set");
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === aiResponseId
+                ? { ...msg, content: "Configuration error: API URL not configured.", isLoading: false }
+                : msg
+            )
+          );
+          return;
+        }
+
+        // Test basic connectivity before creating EventSource
+        try {
+          const connectivityTest = await fetch(process.env.NEXT_PUBLIC_API_URL, { 
+            method: 'HEAD',
+            mode: 'no-cors' // Allows basic connectivity test even with CORS issues
+          });
+          console.log("Basic connectivity test completed");
+        } catch (connectivityError) {
+          console.error("Basic connectivity test failed:", connectivityError);
+        }
+
         // Connect to SSE endpoint using EventSource
         const eventSource = new EventSource(url);
         let streamedContent = "";
         let searchData = null;
         let hasReceivedContent = false;
 
+        // Add connection timeout
+        const connectionTimeout = setTimeout(() => {
+          console.error("EventSource connection timeout");
+          eventSource.close();
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === aiResponseId
+                ? { ...msg, content: "Connection timeout. Please try again.", isLoading: false }
+                : msg
+            )
+          );
+        }, 30000); // 30 second timeout
+
         // Process incoming messages
         eventSource.onmessage = (event) => {
+          clearTimeout(connectionTimeout); // Clear timeout on successful message
+          
           try {
             const data = JSON.parse(event.data);
+            console.log("Received SSE data:", data);
 
             if (data.type === 'checkpoint') {
               // Store the checkpoint ID for future requests
@@ -182,34 +224,94 @@ const Home = () => {
                 );
               }
 
+              clearTimeout(connectionTimeout);
               eventSource.close();
             }
           } catch (error) {
-            console.error("Error parsing event data:", error, event.data);
+            console.error("Error parsing event data:", error, "Raw data:", event.data);
           }
         };
 
-        // Handle errors
-        eventSource.onerror = (error) => {
-          console.error("EventSource error:", error);
-          eventSource.close();
+        // Handle connection opened
+        eventSource.onopen = (event) => {
+          console.log("EventSource connection opened", event);
+          clearTimeout(connectionTimeout);
+        };
 
-          // Only update with error if we don't have content yet
-          if (!streamedContent) {
+        // Handle errors with more detailed logging
+        eventSource.onerror = (error) => {
+          console.error("EventSource error details:", {
+            error,
+            readyState: eventSource.readyState,
+            url: eventSource.url,
+            withCredentials: eventSource.withCredentials,
+            timestamp: new Date().toISOString()
+          });
+
+          // Test if the server is reachable
+          fetch(url.replace('/chat_stream/', '/health-check'), { method: 'HEAD' })
+            .then(response => {
+              console.log("Health check response:", response.status, response.statusText);
+            })
+            .catch(fetchError => {
+              console.error("Server unreachable:", fetchError);
+            });
+
+          // Check ready state to understand the error
+          let errorMessage = "Sorry, there was an error processing your request.";
+          
+          switch (eventSource.readyState) {
+            case EventSource.CONNECTING:
+              console.log("EventSource is connecting... (retrying)");
+              // For CONNECTING state, wait a bit before giving up
+              setTimeout(() => {
+                if (eventSource.readyState === EventSource.CONNECTING) {
+                  console.log("Still connecting after delay, closing connection");
+                  eventSource.close();
+                  errorMessage = "Unable to connect to server. Please check your connection and try again.";
+                  updateErrorMessage();
+                }
+              }, 5000);
+              return; // Don't immediately close
+            case EventSource.OPEN:
+              console.log("EventSource connection is open but received error event");
+              errorMessage = "Connection interrupted. Please try again.";
+              break;
+            case EventSource.CLOSED:
+              console.log("EventSource connection is closed");
+              errorMessage = "Connection closed. Please check your server and try again.";
+              break;
+            default:
+              console.log("EventSource in unknown state:", eventSource.readyState);
+              errorMessage = `Connection error (state: ${eventSource.readyState}). Please try again.`;
+          }
+
+          function updateErrorMessage() {
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === aiResponseId
-                  ? { ...msg, content: "Sorry, there was an error processing your request.", isLoading: false }
+                  ? { ...msg, content: errorMessage, isLoading: false }
                   : msg
               )
             );
+          }
+
+          clearTimeout(connectionTimeout);
+          eventSource.close();
+
+          // Only update with error if we don't have content yet
+          if (!hasReceivedContent) {
+            updateErrorMessage();
           }
         };
 
         // Listen for end event
         eventSource.addEventListener('end', () => {
+          console.log("Received end event");
+          clearTimeout(connectionTimeout);
           eventSource.close();
         });
+
       } catch (error) {
         console.error("Error setting up EventSource:", error);
         setMessages(prev => [
