@@ -104,9 +104,9 @@ const Home = () => {
 
         // Connect to SSE endpoint using EventSource
         const eventSource = new EventSource(url);
-        let streamedContent = "";
-        let searchData = null;
-        let hasReceivedContent = false;
+        let streamedContent: string = "";
+        let searchData: string | null = null;
+        let hasReceivedContent: boolean = false;
 
         // Add connection timeout
         const connectionTimeout = setTimeout(() => {
