@@ -148,12 +148,27 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
     
     yield f"data: {{\"type\": \"end\"}}\n\n"
 
+# @app.get("/chat_stream/{message}")
+# async def chat_stream(message: str, checkpoint_id: Optional[str] = Query(None)):
+#     return StreamingResponse(
+#         generate_chat_responses(message, checkpoint_id), 
+#         media_type="text/event-stream"
+#     )
 @app.get("/chat_stream/{message}")
 async def chat_stream(message: str, checkpoint_id: Optional[str] = Query(None)):
     return StreamingResponse(
-        generate_chat_responses(message, checkpoint_id), 
-        media_type="text/event-stream"
+        generate_chat_responses(message, checkpoint_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Transfer-Encoding": "chunked"
+        }
     )
+
+@app.get("/health-check")
+async def health_check():
+    return {"status": "ok"}
 
 # Add this at the very end of your app.py if not already there
 if __name__ == "__main__":
