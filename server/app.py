@@ -155,3 +155,8 @@ async def chat_stream(message: str, checkpoint_id: Optional[str] = Query(None)):
         media_type="text/event-stream"
     )
 
+# Add this at the very end of your app.py if not already there
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False)
