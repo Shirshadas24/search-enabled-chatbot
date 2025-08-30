@@ -5,12 +5,17 @@ import InputBar from '@/components/InputBar';
 import MessageArea from '@/components/MessageArea';
 import React, { useState } from 'react';
 
+// interface SearchInfo {
+//   stages: string[];
+//   query: string;
+//   urls: string[];
+// }
 interface SearchInfo {
   stages: string[];
   query: string;
   urls: string[];
+  error?: string; // allow errors
 }
-
 interface Message {
   id: number;
   content: string;
@@ -105,7 +110,7 @@ const Home = () => {
         // Connect to SSE endpoint using EventSource
         const eventSource = new EventSource(url);
         let streamedContent: string = "";
-        let searchData: string | null = null;
+        let searchData: SearchInfo | null = null;
         let hasReceivedContent: boolean = false;
 
         // Add connection timeout
