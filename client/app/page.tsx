@@ -347,28 +347,12 @@
 
 // export default Home;
 "use client";
-import { SearchInfo, Message } from '@/types/types';
+
 import Header from '@/components/Header';
 import InputBar from '@/components/InputBar';
 import MessageArea from '@/components/MessageArea';
 import React, { useState } from 'react';
-
-// Corrected: 'urls' can now be a string or an array of strings
-interface SearchInfo {
-  stages: string[];
-  query: string;
-  urls: string | string[];
-  error?: string; // optional for error cases
-}
-
-interface Message {
-  id: number;
-  content: string;
-  isUser: boolean;
-  type: string;
-  isLoading?: boolean;
-  searchInfo?: SearchInfo;
-}
+import { SearchInfo, Message } from '@/types/types'; // Corrected: Import types from the new file
 
 const Home: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
